@@ -5,6 +5,7 @@ import re
 from . import group_image_check
 
 import nonebot
+from nonebot import get_plugin_config
 from nonebot import get_driver, Bot
 from nonebot.adapters.qq import Event, GuildMessageEvent, GroupRobotEvent
 from nonebot.internal.matcher import Matcher
@@ -31,8 +32,7 @@ __plugin_meta__ = PluginMetadata(
     config=Config,
 )
 
-global_config = get_driver().config
-config = Config.parse_obj(global_config)
+config = get_plugin_config(Config)
 
 sub_plugins = nonebot.load_plugins(
     str(Path(__file__).parent.joinpath("plugins").resolve())

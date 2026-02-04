@@ -20,6 +20,7 @@ from .time_check import TimeCheckPlugin
 from .mark_caculate import MarkCalculate
 from . import super_user_group
 
+from .logger import plugin_logger as logger
 
 TimeCheckPlugin = TimeCheckPlugin()
 MarkCalculate = MarkCalculate()
@@ -82,11 +83,6 @@ async def name_check(ID, matcher: Type[Matcher]):
 async def image_check(matcher: Type[Matcher], event: Event, object):
     """这是一个图片检查，检查整个消息序列中是否有图片。如果没有，输出提示"""
 
-    is_in_time = TimeCheckPlugin.time_check()
-
-    if not is_in_time:
-        await matcher.finish(object["name"] + "现在不在打卡时间哦")
-
     args = event.get_message()
 
     is_image = False
@@ -114,48 +110,46 @@ async def image_check(matcher: Type[Matcher], event: Event, object):
 
 
 async def point_calculate(is_legal, ID, matcher: Type[Matcher], point):
-    """这是一个打卡检查，如果打卡内容合法，而且今天还没有签到，则进行打卡。"""
-    is_marked = False
-    if is_legal:
-
-        try:
-
-            pastime = load_data.count_board[ID]["date"]
-
-            if TimeCheckPlugin.date_check(pastime):
-                is_marked = True
-                await matcher.finish("你今天已经签到过了哦！ε=( o｀ω′)ノ")
-
-        except Exception as e:
-
-            TimeCheckPlugin.time_solve()
-            load_data.count_board[ID] = {"date": TimeCheckPlugin.now_time, "week": TimeCheckPlugin.now_time_date}
-
-        if is_marked:
-            return
-
-        times_check(ID, TimeCheckPlugin.now_time_date)
-
-        load_data.write_in_count(ID, TimeCheckPlugin.now_time, int(TimeCheckPlugin.get_week()))
-        load_data.save_count()
-
-        try:
-            point = int(load_data.mark_board[ID]["point"]) + MarkCalculate.calculate(point, ID)
-
-        except KeyError:
-
-            load_data.mark_board[ID]["point"] = MarkCalculate.calculate(point, ID)
-
-            point = load_data.mark_board[ID]["point"]
-
-        load_data.write_in(ID, point)
-        load_data.save()
-
-        await matcher.finish(load_data.mark_board[ID]["name"] + "打卡成功!")
-    else:
-
+    """打卡检查：合法 + 未重复 + 在允许时间段内 -> 记一次打卡并更新积分。"""
+    if not is_legal:
         await matcher.finish("你的打卡内容呢？")
 
+    ID = str(ID)
+
+    # 限制只能在 start/end 时间段内打卡
+    if not TimeCheckPlugin.time_check():
+        logger.info(f"不在打卡时间段")
+        await matcher.finish("现在不在打卡时间段内哦 _(:3 ⌒ﾞ)_")
+
+    today = TimeCheckPlugin.now_time
+
+    # 区分：没有打卡记录 vs 重复打卡
+    rec = load_data.count_board.get(ID)
+    if rec is None:
+        logger.info(f"用户 <green>{ID}</green> 没有签到记录")
+    else:
+        last_date = rec.get("date")
+        if last_date == today:
+            logger.info(f"用户 <green>{ID}</green> 今天已经签到过了")
+            await matcher.finish("你今天已经签到过了哦！ε=( o｀ω′)ノ")
+
+    logger.info(f"用户 <green>{ID}</green> 今天还没有签到")
+    # 通过：写入本次打卡时间
+    load_data.write_in_count(ID, today, int(TimeCheckPlugin.get_week()))
+    load_data.save_count()
+
+    times_check(ID, TimeCheckPlugin.now_time_date)
+
+    # 更新积分
+    old_point = int(load_data.mark_board.get(ID, {}).get("point", 0))
+    delta = MarkCalculate.calculate(point, ID)
+    new_point = old_point + delta
+
+    load_data.write_in(ID, new_point)
+    load_data.save()
+
+    name = load_data.mark_board.get(ID, {}).get("name", ID)
+    await matcher.finish(f"{name}打卡成功!")
 
 @name.handle()
 async def name_handle(event: Event):
@@ -200,8 +194,10 @@ async def mark_note_handle(event: Event):
 @mark_normal.handle()
 async def mark_normal_handle(event: Event):
     """这是截图打卡的事件响应处理"""
+    logger.info("检测到截图打卡事件")
 
     ID = event.get_user_id()
+    logger.info("打卡者ID为<green>{}</green>".format(ID))
 
     object = await name_check(ID, matcher=mark_normal)
 
@@ -228,7 +224,7 @@ async def handle_show_all(bot: Bot, event: Event, Guild_event: GuildMessageEvent
         await show_all.send("你没有权限执行这个操作！")
         return 0
     else:
-        await show_all.send("好的，管理员，以下是所有的积分")
+        await show_all.send("好的，管理员，以下是所有的积分:\n")
     ans = ""
     if load_data.mark_board == {}:
         await show_all.finish("看来还没有人打卡的样子，真是冷清QAQ")

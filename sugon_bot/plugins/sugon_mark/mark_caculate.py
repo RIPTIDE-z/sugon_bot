@@ -2,7 +2,7 @@ import datetime
 from . import load_data
 
 import holidays
-
+from .logger import plugin_logger as logger
 
 class MarkCalculate:
     """这个类负责进行积分的累进计算。"""

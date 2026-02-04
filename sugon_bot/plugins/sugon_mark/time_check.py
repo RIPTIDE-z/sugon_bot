@@ -1,92 +1,84 @@
 # 导入 datetime 模块
 import datetime
-from . import load_data
+from datetime import timedelta
 
+from . import load_data
+from .logger import plugin_logger as logger
 
 class TimeCheckPlugin:
-    """这个类负责时间检查。在这个类中，会把当前时间保存做字符串now_time的形式，同时将打卡的起始时间和终止事件储存做time类"""
+    """
+    时间检查与“有效日期”计算。
+
+    - time_check(): 判断当前时间是否处于 start/end 的允许区间内（支持跨午夜）
+    - now_time: 有效日期字符串（YYYY-MM-DD）
+    - now_time_date: 有效日期对应的 datetime（当天 00:00:00）
+    - flag: 跨午夜时用于把凌晨归到前一天（例如 00:30 归前一天 -> flag=-1）
+    """
+
+    now_time: str
+    now_time_date: datetime.datetime
 
     def __init__(self):
-        # 获取当前时间
-        self.start = None
-        self.end = None
-        self.isBefore = True
-        self.now = datetime.datetime.now()
+        self.start: datetime.time | None = None
+        self.end: datetime.time | None = None
+        self.flag: int = 0
+        self.now: datetime.datetime = datetime.datetime.now()
 
         self.time_set()
+        self.time_solve()  # 初始化 now_time / now_time_date
 
-        self.flag = 0
+    def time_set(self) -> None:
+        """从 config.json 读取 start/end 时间。"""
+        st = load_data.time["start_time"]
+        ed = load_data.time["end_time"]
+        self.start = datetime.time(st["hour"], st["minute"], st["second"])
+        self.end = datetime.time(ed["hour"], ed["minute"], ed["second"])
 
-        self.now_time = str(self.now.year) + str(self.now.month) + str(self.now.day + self.flag)
-        self.now_time_date = datetime.datetime(self.now.year, self.now.month, self.now.day)
-
-    def time_compare_less(self, timeA, timeB):
-        if timeA.hour > timeB.hour:
-            return False
-        elif timeA.hour < timeB.hour:
-            return True
-        else:
-            if timeA.minute > timeB.minute:
-                return False
-            elif timeA.minute < timeB.minute:
-                return True
-            else:
-                if timeA.second > timeB.second:
-                    return False
-                elif timeA.second < timeB.second:
-                    return True
-                else:
-                    return True
-
-
-    def time_set(self):
-        # 定义 start 和 end 的时间对象
-        self.start = datetime.time(load_data.time["start_time"]["hour"],
-                                   load_data.time["start_time"]["minute"],
-                                   load_data.time["start_time"]["second"])
-        self.end = datetime.time(load_data.time["end_time"]["hour"],
-                                 load_data.time["end_time"]["minute"],
-                                 load_data.time["end_time"]["second"])
-        self.isBefore = self.time_compare_less(self.start, self.end)
-
-    def time_check(self):
-        """判断当前时间是否处于start和end之间"""
+    def _update_flag_and_now(self) -> bool:
+        """
+        更新 self.now、self.flag，并返回当前是否在允许时间段内。
+        """
         self.now = datetime.datetime.now()
-        if self.isBefore:
-            if self.end >= self.now.time() >= self.start:
-                self.flag = 0
-                self.time_solve()
-                return True
-            else:
-                return False
+        now_t = self.now.time()
+
+        assert self.start is not None and self.end is not None
+
+        if self.start <= self.end:
+            # 不跨午夜
+            self.flag = 0
+            inside = self.start <= now_t <= self.end
         else:
-            if self.now.time() <= self.end:
-                self.flag = -1
-                self.time_solve()
-                return True
+            # 跨午夜：例如 17:00 - 次日 02:00
+            inside = (now_t >= self.start) or (now_t <= self.end)
+            self.flag = -1 if now_t <= self.end else 0
 
-            elif self.start <= self.now.time():
-                self.flag = 0
-                self.time_solve()
-                return True
-            else:
-                return False
-        pass
+        return inside
 
-    def time_solve(self):
-        """在打卡系统中，我们将17：00-次日02:00视作同一天的打卡，所以需要对now_time进行处理。flag的计算方法在time_check函数中"""
+    def time_check(self) -> bool:
+        """判断当前时间是否处于 start/end 之间（支持跨午夜），并刷新 now_time。"""
+        inside = self._update_flag_and_now()
+        if inside:
+            self.time_solve()
+        return inside
+
+    def time_solve(self) -> None:
+        """
+        计算“有效日期”。
+        用 timedelta 处理跨月/跨年，避免 day+flag 产生非法日期。
+        """
         self.now = datetime.datetime.now()
-        self.now_time = str(self.now.year) + str(self.now.month) + str(self.now.day + self.flag)
-        self.now_time_date = datetime.datetime(self.now.year, self.now.month, self.now.day + self.flag)
+        d = (self.now + timedelta(days=self.flag)).date()
+        self.now_time = d.strftime("%Y-%m-%d")
+        self.now_time_date = datetime.datetime.combine(d, datetime.time.min)
 
-    def date_check(self, pass_date):
-        """这是一个日期检测，检测今天和上一次打卡是否是同一天。通过这种方法来限制一天打卡一次。"""
+    def date_check(self, pass_date: str) -> bool:
+        """判断 pass_date 是否等于当前有效日期（YYYY-MM-DD）。"""
+        self._update_flag_and_now()  # 保证 flag 最新
         self.time_solve()
-        if pass_date != self.now_time:
-            return False
-        else:
-            return True
+        return pass_date == self.now_time
 
-    def get_week(self):
+    def get_week(self) -> int:
+        """返回 ISO 周数（1-53），不是星期几。"""
+        self._update_flag_and_now()
         self.time_solve()
         return self.now_time_date.isocalendar().week

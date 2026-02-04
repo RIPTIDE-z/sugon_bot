@@ -1,5 +1,6 @@
 import requests
 import nonebot
+from .logger import plugin_logger as logger
 
 config = nonebot.get_driver().config
 

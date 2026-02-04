@@ -1,2 +1,13 @@
-.env
+# 虚拟环境和ide相关
+/.venv/
+/.idea/
+/.vscode
+__pycache__/
+
+# bot环境配置文件
 .env.*
+!.env.example
+
+count.json
+mark_board.json
+super_user_group.json

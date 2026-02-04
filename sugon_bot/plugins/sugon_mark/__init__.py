@@ -224,29 +224,45 @@ async def handle_show_all(bot: Bot, event: Event, Guild_event: GuildMessageEvent
         await show_all.send("你没有权限执行这个操作！")
         return 0
     else:
-        await show_all.send("好的，管理员，以下是所有的积分:\n")
-    ans = ""
+        await show_all.send("好的，管理员，积分榜如下:\n")
+
     if load_data.mark_board == {}:
         await show_all.finish("看来还没有人打卡的样子，真是冷清QAQ")
-    for item in load_data.mark_board.values():
-        ans = ans + item["name"] + "积分:" + str(item["point"]) + "\n"
-    await show_all.finish(ans)
+
+    logger.info("正在输出积分榜")
+
+    # 排序：积分降序
+    records = sorted(
+        load_data.mark_board.values(),
+        key=lambda x: (-int(x.get("point", 0)), str(x.get("name", ""))),
+    )
+
+    lines = [f"{item.get('name', '未知')}：{int(item.get('point', 0))} 分" for item in records]
+    msg = "好的，管理员，积分榜如下：\n" + "\n".join(lines)
+    await show_all.finish(msg)
 
 @show_all.handle()
 async def group_show_all(bot: Bot,event:Event):
     """这是显示所有人的积分的事件响应处理"""
     ID = event.get_user_id()
-    if super_user_group.check_super_user_group(ID):
-        await show_all.send("好的，管理员，以下是所有的积分")
-    else:
+    if not super_user_group.check_super_user_group(ID) :
         await show_all.send("你没有权限执行这个操作！")
         return 0
-    ans = ""
+
     if load_data.mark_board == {}:
         await show_all.finish("看来还没有人打卡的样子，真是冷清QAQ")
-    for item in load_data.mark_board.values():
-        ans = ans + item["name"] + "积分:" + str(item["point"]) + "\n"
-    await show_all.finish(ans)
+
+    logger.info("正在输出积分榜", "green")
+
+    # 排序：积分降序
+    records = sorted(
+        load_data.mark_board.values(),
+        key=lambda x: (-int(x.get("point", 0)), str(x.get("name", ""))),
+    )
+
+    lines = [f"{item.get('name', '未知')}：{int(item.get('point', 0))} 分" for item in records]
+    msg = "好的，管理员，积分榜如下：\n" + "\n".join(lines)
+    await show_all.finish(msg)
 
 @remove.handle()
 async def remove_mark(bot: Bot,event:Event):

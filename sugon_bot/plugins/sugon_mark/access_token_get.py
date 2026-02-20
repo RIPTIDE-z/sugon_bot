@@ -1,6 +1,5 @@
-import requests
 import nonebot
-from .logger import plugin_logger as logger
+import requests
 
 config = nonebot.get_driver().config
 
@@ -8,6 +7,7 @@ access_token = ' '
 
 secret = config.qq_bots[0]["secret"]
 appId = config.qq_bots[0]["id"]
+
 
 def job():
     url = 'https://bots.qq.com/app/getAppAccessToken'

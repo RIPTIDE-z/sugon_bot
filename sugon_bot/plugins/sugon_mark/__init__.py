@@ -1,28 +1,25 @@
+import re
 from pathlib import Path
 from typing import Type
-import datetime
-import re
-from . import group_image_check
 
 import nonebot
 from nonebot import get_driver, Bot
-from nonebot.adapters.qq import Event, GuildMessageEvent, GroupRobotEvent
-from nonebot.internal.matcher import Matcher
-from nonebot.plugin import PluginMetadata
 from nonebot import on_command
-from nonebot.params import RawCommand, CommandArg
 from nonebot.adapters import Message
-from nonebot.permission import SUPERUSER
+from nonebot.adapters.qq import Event, GuildMessageEvent
+from nonebot.internal.matcher import Matcher
+from nonebot.params import RawCommand, CommandArg
+from nonebot.plugin import PluginMetadata
 
-from .config import Config
-from . import load_data
+from . import group_image_check
 from . import link_check
-from .guild_api import get_roles, get_members, role_check, get_owners_id
-from .time_check import TimeCheckPlugin
-from .mark_caculate import MarkCalculate
+from . import load_data
 from . import super_user_group
-
+from .config import Config
+from .guild_api import get_roles, get_members, role_check, get_owners_id
 from .logger import plugin_logger as logger
+from .mark_caculate import MarkCalculate
+from .time_check import TimeCheckPlugin
 
 time_checker = TimeCheckPlugin()
 MarkCalculate = MarkCalculate()
@@ -46,10 +43,11 @@ mark_note = on_command("marknote", aliases={"marknote", "note", "笔记打卡"},
 mark_normal = on_command("marknormal", aliases={"marknormal", "normal", "截图打卡"}, priority=10, block=True)
 name = on_command("nn", aliases={"nn", "NAME", "请叫我"}, priority=10, block=True)
 show_all = on_command("show", aliases={"show"}, priority=10, block=True)
-remove = on_command("remove", aliases={"remove"},priority=10,block=True)
-set_score = on_command("setscore", aliases={"setscore"},priority=10,block=True)
-get_user_id =on_command("get_user_id",aliases={"ID"},priority=10,block=True)
-set_super_user =on_command("set_super_user",aliases={"super"},priority=10,block=True)
+remove = on_command("remove", aliases={"remove"}, priority=10, block=True)
+set_score = on_command("setscore", aliases={"setscore"}, priority=10, block=True)
+get_user_id = on_command("get_user_id", aliases={"ID"}, priority=10, block=True)
+set_super_user = on_command("set_super_user", aliases={"super"}, priority=10, block=True)
+
 
 def times_check(ID, date):
     """这是一个打卡次数的检查。"""
@@ -61,6 +59,7 @@ def times_check(ID, date):
     else:
         return False
 
+
 def _has_space_after_cmd(full_text: str, raw_cmd: str) -> bool:
     """判断 raw_cmd 后面是否紧跟空白符（空格/制表/换行等）"""
     if not full_text.startswith(raw_cmd):
@@ -68,14 +67,15 @@ def _has_space_after_cmd(full_text: str, raw_cmd: str) -> bool:
     tail = full_text[len(raw_cmd):]
     return bool(tail) and tail[0].isspace()
 
+
 async def require_text_arg(
-    *,
-    event: Event,
-    matcher: Type[Matcher],
-    raw_cmd: str,
-    arg_text: str,
-    usage: str,
-    arg_name: str = "参数",
+        *,
+        event: Event,
+        matcher: Type[Matcher],
+        raw_cmd: str,
+        arg_text: str,
+        usage: str,
+        arg_name: str = "参数",
 ) -> None:
     """要求必须有参数；并区分：缺空格 vs 缺参数"""
     full = event.get_plaintext()
@@ -88,6 +88,7 @@ async def require_text_arg(
     # 没参数：/NAME 或 /NAME<空格>
     if not arg_text:
         await matcher.finish(f"缺少{arg_name}哦🥺\n用法：{usage}")
+
 
 async def name_check(ID, matcher: Type[Matcher]):
     """这是一个命名检查，如果没有设置称呼，则输出提示。"""
@@ -148,7 +149,7 @@ async def point_calculate(is_legal, ID, matcher: Type[Matcher], point):
     load_data.save_count()
 
     # TODO:打卡次数检查相关
-    #times_check(ID, time_checker.now_time_date)
+    # times_check(ID, time_checker.now_time_date)
 
     # 更新积分
     old_point = int(load_data.mark_board.get(ID, {}).get("point", 0))
@@ -161,11 +162,12 @@ async def point_calculate(is_legal, ID, matcher: Type[Matcher], point):
     name = load_data.mark_board.get(ID, {}).get("name", ID)
     await matcher.finish(f"{name}打卡成功!")
 
+
 @name.handle()
 async def name_handle(
-    event: Event,
-    raw_cmd: str = RawCommand(),
-    arg_msg: Message = CommandArg(),
+        event: Event,
+        raw_cmd: str = RawCommand(),
+        arg_msg: Message = CommandArg(),
 ):
     ID = str(event.get_user_id())
     arg_text = arg_msg.extract_plain_text().strip()
@@ -186,12 +188,13 @@ async def name_handle(
 
     await name.finish("好的，那么我将称呼你为" + arg_text)
 
+
 # TODO:重写note逻辑
 @mark_note.handle()
 async def mark_note_handle(
-    event: Event,
-    raw_cmd: str = RawCommand(),
-    arg_msg: Message = CommandArg(),
+        event: Event,
+        raw_cmd: str = RawCommand(),
+        arg_msg: Message = CommandArg(),
 ):
     ID = str(event.get_user_id())
     await name_check(ID, matcher=mark_note)
@@ -225,11 +228,12 @@ async def mark_note_handle(
 
     await point_calculate(is_legal, ID, mark_note, 1)
 
+
 @mark_normal.handle()
 async def mark_normal_handle(
-    event: Event,
-    raw_cmd: str = RawCommand(),
-    arg_msg: Message = CommandArg(),
+        event: Event,
+        raw_cmd: str = RawCommand(),
+        arg_msg: Message = CommandArg(),
 ):
     logger.info("检测到截图打卡事件")
 
@@ -261,6 +265,7 @@ async def mark_normal_handle(
 
     await point_calculate(is_legal, ID, mark_normal, 1)
 
+
 @show_all.handle()
 async def handle_show_all(bot: Bot, event: Event, Guild_event: GuildMessageEvent):
     """这是显示所有人的积分的事件响应处理"""
@@ -271,7 +276,7 @@ async def handle_show_all(bot: Bot, event: Event, Guild_event: GuildMessageEvent
     get_members(id, id_list)
     ID = event.get_user_id()
 
-    if not super_user_group.check_super_user_group(ID) :
+    if not super_user_group.check_super_user_group(ID):
         await show_all.finish("你没有权限执行这个操作！")
 
     if load_data.mark_board == {}:
@@ -289,11 +294,12 @@ async def handle_show_all(bot: Bot, event: Event, Guild_event: GuildMessageEvent
     msg = "好的，管理员，积分榜如下：\n" + "\n".join(lines)
     await show_all.finish(msg)
 
+
 @show_all.handle()
-async def group_show_all(bot: Bot,event:Event):
+async def group_show_all(bot: Bot, event: Event):
     """这是显示所有人的积分的事件响应处理"""
     ID = event.get_user_id()
-    if not super_user_group.check_super_user_group(ID) :
+    if not super_user_group.check_super_user_group(ID):
         await show_all.finish("你没有权限执行这个操作！")
 
     if load_data.mark_board == {}:
@@ -311,11 +317,12 @@ async def group_show_all(bot: Bot,event:Event):
     msg = "好的，管理员，积分榜如下：\n" + "\n".join(lines)
     await show_all.finish(msg)
 
+
 @remove.handle()
 async def remove_mark(
-    event: Event,
-    raw_cmd: str = RawCommand(),
-    arg_msg: Message = CommandArg(),
+        event: Event,
+        raw_cmd: str = RawCommand(),
+        arg_msg: Message = CommandArg(),
 ):
     ID = str(event.get_user_id())
     if not super_user_group.check_super_user_group(ID):
@@ -339,11 +346,12 @@ async def remove_mark(
 
     await remove.finish("已经删除" + target_name + "的积分信息！")
 
+
 @set_score.handle()
 async def handle_set_score(
-    event: Event,
-    raw_cmd: str = RawCommand(),
-    arg_msg: Message = CommandArg(),
+        event: Event,
+        raw_cmd: str = RawCommand(),
+        arg_msg: Message = CommandArg(),
 ):
     ID = str(event.get_user_id())
     if not super_user_group.check_super_user_group(ID):
@@ -371,11 +379,12 @@ async def handle_set_score(
 
     await set_score.finish(f"已经修改{target_name}的积分为 {score}！")
 
+
 @set_super_user.handle()
 async def handle_set_super_user(
-    event: Event,
-    raw_cmd: str = RawCommand(),
-    arg_msg: Message = CommandArg(),
+        event: Event,
+        raw_cmd: str = RawCommand(),
+        arg_msg: Message = CommandArg(),
 ):
     ID = str(event.get_user_id())
     if not super_user_group.check_super_user_group(ID):

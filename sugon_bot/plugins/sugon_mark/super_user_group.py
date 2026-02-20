@@ -22,15 +22,6 @@ def init(file_path: Path):
             json.dump([], file, ensure_ascii=False, indent=2)
 
 
-def _migrate_legacy_file() -> None:
-    # 兼容旧路径：如果根目录下存在旧文件且 data 中还没有，就迁移过去。
-    if SUPER_USER_FILE.exists():
-        return
-    if LEGACY_SUPER_USER_FILE.exists():
-        DATA_DIR.mkdir(parents=True, exist_ok=True)
-        LEGACY_SUPER_USER_FILE.replace(SUPER_USER_FILE)
-
-
 def _load_super_users(file_path: Path) -> list:
     with file_path.open("r", encoding="utf-8") as file:
         data = json.load(file)
@@ -42,7 +33,6 @@ def save():
         json.dump(super_user_group, f, ensure_ascii=False, indent=2)
 
 
-_migrate_legacy_file()
 init(SUPER_USER_FILE)
 
 super_user_group = _load_super_users(SUPER_USER_FILE)

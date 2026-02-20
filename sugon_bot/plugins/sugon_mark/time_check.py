@@ -2,7 +2,7 @@ import datetime
 from datetime import timedelta
 
 from . import load_data
-from .logger import plugin_logger as logger
+
 
 class TimeCheckPlugin:
     """

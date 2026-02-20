@@ -9,6 +9,3 @@ def is_image_url(url):
     if re.match(pattern, url):
         return True
     return False
-
-
-

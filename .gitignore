@@ -8,6 +8,10 @@ __pycache__/
 .env.*
 !.env.example
 
-count.json
-mark_board.json
-super_user_group.json
+# 数据文件
+data/count.json
+data/mark_board.json
+data/super_user_group.json
+
+# 日志文件
+/log

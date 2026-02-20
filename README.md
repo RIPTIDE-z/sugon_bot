@@ -1,12 +1,11 @@
-# sugon-bot
+# Sugon-Bot
 
-## How to start
+## 项目部署
 
-1. generate project using `nb create` .
-2. create your plugin using `nb plugin create` .
-3. writing your plugins under `sugon_bot/plugins` folder.
-4. run your bot using `nb run --reload` .
+- 本项目使用uv作为环境管理工具
+- 项目基础依赖为Nonebot2框架以及QQ适配器
+- 
 
-## Documentation
+## 文档
 
-See [Docs](https://nonebot.dev/)
+- 项目说明请见 [Introduction](doc/Introduction.md)

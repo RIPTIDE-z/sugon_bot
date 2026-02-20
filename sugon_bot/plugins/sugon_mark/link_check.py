@@ -1,6 +1,7 @@
 # 导入requests库，用于发送请求
-import requests
 import imghdr
+
+import requests
 
 
 # 定义一个函数，用于检测文本是否是链接

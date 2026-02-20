@@ -1,4 +1,3 @@
-# 导入 datetime 模块
 import datetime
 from datetime import timedelta
 
@@ -19,7 +18,9 @@ class TimeCheckPlugin:
     now_time_date: datetime.datetime
 
     def __init__(self):
+        # 打卡开始时间
         self.start: datetime.time | None = None
+        # 打卡结束时间
         self.end: datetime.time | None = None
         self.flag: int = 0
         self.now: datetime.datetime = datetime.datetime.now()
